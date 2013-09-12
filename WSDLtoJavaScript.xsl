@@ -15,7 +15,7 @@
 	
 	<xsl:output method="text"/>
 	
-	<xsl:variable name="indent" select="'    '"/>
+	<xsl:variable name="indent" select="'  '"/>
 	
 	<xsl:template match="/">
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/> <!-- [@name = 'read'] -->
@@ -24,7 +24,7 @@
 	<xsl:template match="wsdl:operation">
 		<xsl:variable name="operationName" select="@name"/>
 		<xsl:if test="not(position() = 1)">
-			<xsl:text>&#10;</xsl:text>			
+			<xsl:text>&#10;</xsl:text>
 		</xsl:if>
 		<xsl:text>/*&#10;  Operation: </xsl:text>
 		<xsl:value-of select="$operationName"/>
@@ -32,11 +32,9 @@
 		<xsl:apply-templates select="wsdl:input">
 			<xsl:with-param name="operationName" select="$operationName"/>
 		</xsl:apply-templates>
-		<!--
 		<xsl:apply-templates select="wsdl:output">
 			<xsl:with-param name="operationName" select="$operationName"/>
 		</xsl:apply-templates>
-		-->
 	</xsl:template>
 	
 	<xsl:template match="wsdl:input">
@@ -154,7 +152,7 @@
 	<xsl:template match="schema:complexContent">
 		<xsl:param name="depth"/>
 		<xsl:apply-templates select="schema:extension">
-			<xsl:with-param name="depth" select="concat($depth, $indent)"/>
+			<xsl:with-param name="depth" select="$depth"/>
 		</xsl:apply-templates>
 	</xsl:template>
 	
@@ -166,7 +164,7 @@
 			<xsl:with-param name="impl" select="'true'"/>
 		</xsl:apply-templates>
 		<xsl:apply-templates select="schema:sequence">
-			<xsl:with-param name="depth" select="concat($depth, $indent)"/>
+			<xsl:with-param name="depth" select="$depth"/>
 		</xsl:apply-templates>
 	</xsl:template>
 	
