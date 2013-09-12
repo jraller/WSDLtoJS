@@ -77,6 +77,23 @@
 		<xsl:text>};</xsl:text>
 	</xsl:template>
 	
+	<xsl:template match="schema:simpleType">
+		<xsl:param name="depth"/>
+		<xsl:param name="name"/>
+		<xsl:text>&#10;</xsl:text>
+		<xsl:value-of select="$depth"/>
+		<xsl:value-of select="$name"/>
+		<xsl:text>: '' // one of: </xsl:text>
+		<xsl:for-each select="schema:restriction/schema:enumeration">
+			<xsl:text>'</xsl:text>
+			<xsl:value-of select="@value"/>
+			<xsl:text>'</xsl:text>
+			<xsl:if test="not(position() = last())">
+				<xsl:text>, </xsl:text>
+			</xsl:if>
+		</xsl:for-each>
+	</xsl:template>
+	
 	<xsl:template match="schema:complexType">
 		<xsl:param name="depth"/>
 		<xsl:param name="name"/>
@@ -126,7 +143,9 @@
 				<xsl:text>}</xsl:text>
 				<xsl:choose>
 					<xsl:when test="not($position = $last)">
-						<xsl:text>,</xsl:text>
+<!--						<xsl:text>, // </xsl:text>
+						<xsl:value-of select="$position"/>
+						<xsl:value-of select="$last"/>-->
 					</xsl:when>
 					<xsl:when test="string-length($depth) &gt; string-length($indent)">
 						<xsl:text/>
@@ -178,6 +197,7 @@
 	<xsl:template match="schema:element">
 		<xsl:param name="depth"/>
 		<xsl:variable name="elementName" select="@name"/>
+		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
 		<xsl:if test="substring(@type, 1, 4) = 'xsd:'">
 			<xsl:text>&#10;</xsl:text>
 			<xsl:value-of select="$depth"/>
@@ -186,8 +206,12 @@
 		</xsl:if>
 		<xsl:choose>
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
-				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementName]">
+				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
+				</xsl:apply-templates>
+				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
+					<xsl:with-param name="depth" select="$depth"/>
+					<xsl:with-param name="name" select="$elementName"/>
 				</xsl:apply-templates>
 			</xsl:when>
 			<xsl:when test="@type = 'xsd:anyURI'">
@@ -231,7 +255,10 @@
 		</xsl:if>
 		<xsl:choose>
 			<xsl:when test="@maxOccurs = 1"/>
-			<xsl:when test="string-length(@maxOccurs) = 0"/>
+			<xsl:when test="@maxOccurs = 'unbounded'">
+				<xsl:text> unbounded</xsl:text>
+			</xsl:when>
+			<xsl:when test="string-length(@maxOccurs) = 0"/>			
 			<xsl:otherwise>
 				<xsl:text> occurs </xsl:text>
 				<xsl:value-of select="@maxOccurs"/>
@@ -243,7 +270,7 @@
 	<xsl:template name="wrapAsString">
 		<xsl:param name="name"/>
 		<xsl:choose>
-			<xsl:when test="string-length($name) &gt; string-length(translate($name, '-', ''))">
+			<xsl:when test="string-length($name) &gt; string-length(translate($name, '-', '')) or $name = 'delete'">
 				<xsl:text>'</xsl:text>
 				<xsl:value-of select="$name"/>
 				<xsl:text>'</xsl:text>
