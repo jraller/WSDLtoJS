@@ -18,7 +18,7 @@
 	<xsl:variable name="indent" select="'  '"/>
 	
 	<xsl:template match="/">
-		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/> <!-- [@name = 'read'] -->
+		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation[@name = 'editAccessRights']"/> <!-- [@name = 'read'] -->
 	</xsl:template>
 	
 	<xsl:template match="wsdl:operation">
@@ -66,13 +66,28 @@
 		<xsl:text> = {</xsl:text>
 		<xsl:for-each select="schema:complexType/schema:sequence/schema:element">
 			<xsl:variable name="elementPartName" select="@name"/>
-			<xsl:variable name="elementPartType" select="substring-after(@type, 'impl:')"/>
-			<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementPartType]">
-				<xsl:with-param name="depth" select="$indent"/>
-				<xsl:with-param name="name" select="$elementPartName"/>
-				<xsl:with-param name="position" select="position()"/>
-				<xsl:with-param name="last" select="last()"/>
-			</xsl:apply-templates>
+			<xsl:variable name="elementPartType" select="@type"/>
+			<xsl:choose>
+				<xsl:when test="substring-before($elementPartType, ':') = 'impl'">
+					<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = substring-after($elementPartType, 'impl:')]">
+						<xsl:with-param name="depth" select="$indent"/>
+						<xsl:with-param name="name" select="$elementPartName"/>
+						<xsl:with-param name="position" select="position()"/>
+						<xsl:with-param name="last" select="last()"/>
+					</xsl:apply-templates>
+				</xsl:when>
+				<xsl:when test="substring-before($elementPartType, ':') = 'xsd'">
+					<xsl:apply-templates select=".">
+						<xsl:with-param name="depth" select="$indent"/>
+						<xsl:with-param name="name" select="$elementPartName"/>
+						<xsl:with-param name="position" select="position()"/>
+						<xsl:with-param name="last" select="last()"/>
+					</xsl:apply-templates>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:text>I missed something</xsl:text>
+				</xsl:otherwise>
+			</xsl:choose>
 		</xsl:for-each>
 		<xsl:text>};</xsl:text>
 	</xsl:template>
@@ -100,6 +115,7 @@
 		<xsl:param name="position"/>
 		<xsl:param name="last"/>
 		<xsl:param name="impl"/>
+		<xsl:param name="maxOccurs"/>
 		<xsl:choose>
 			<xsl:when test="$impl = 'true'">
 				<xsl:apply-templates select="schema:sequence">
@@ -128,7 +144,11 @@
 				<xsl:call-template name="wrapAsString">
 					<xsl:with-param name="name" select="$rawName"/>
 				</xsl:call-template>
-				<xsl:text>: {</xsl:text>
+				<xsl:text>: </xsl:text>
+				<xsl:if test="$maxOccurs = 'unbounded'">
+					<xsl:text>[</xsl:text>
+				</xsl:if>
+				<xsl:text>{</xsl:text>
 				<xsl:apply-templates select="schema:sequence">
 					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
 				</xsl:apply-templates>
@@ -143,9 +163,7 @@
 				<xsl:text>}</xsl:text>
 				<xsl:choose>
 					<xsl:when test="not($position = $last)">
-<!--						<xsl:text>, // </xsl:text>
-						<xsl:value-of select="$position"/>
-						<xsl:value-of select="$last"/>-->
+						<xsl:text>,</xsl:text>
 					</xsl:when>
 					<xsl:when test="string-length($depth) &gt; string-length($indent)">
 						<xsl:text/>
@@ -160,9 +178,13 @@
 	
 	<xsl:template match="schema:sequence">
 		<xsl:param name="depth"/>
-		<xsl:apply-templates select="schema:element">
-			<xsl:with-param name="depth" select="$depth"/>
-		</xsl:apply-templates>
+		<xsl:for-each select="schema:element">
+			<xsl:apply-templates select=".">
+				<xsl:with-param name="depth" select="$depth"/>
+				<xsl:with-param name="position" select="position()"/>
+				<xsl:with-param name="last" select="last()"/>
+			</xsl:apply-templates>
+		</xsl:for-each>
 		<xsl:apply-templates select="schema:choice">
 			<xsl:with-param name="depth" select="$depth"/>
 		</xsl:apply-templates>
@@ -196,8 +218,11 @@
 	
 	<xsl:template match="schema:element">
 		<xsl:param name="depth"/>
+		<xsl:param name="position"/>
+		<xsl:param name="last"/>
 		<xsl:variable name="elementName" select="@name"/>
 		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
+		
 		<xsl:if test="substring(@type, 1, 4) = 'xsd:'">
 			<xsl:text>&#10;</xsl:text>
 			<xsl:value-of select="$depth"/>
@@ -208,10 +233,13 @@
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
 				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
+					<xsl:with-param name="name" select="$elementName"/>
+					<xsl:with-param name="maxOccurs" select="@maxOccurs"/>
 				</xsl:apply-templates>
 				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
 					<xsl:with-param name="name" select="$elementName"/>
+					<xsl:with-param name="maxOccurs" select="@maxOccurs"/>
 				</xsl:apply-templates>
 			</xsl:when>
 			<xsl:when test="@type = 'xsd:anyURI'">
@@ -242,7 +270,10 @@
 				<xsl:text>You forgot one</xsl:text>
 			</xsl:otherwise>
 		</xsl:choose>
-		<xsl:if test="not(position() = last())">
+		<xsl:if test="substring(@type, 1, 5) = 'impl:' and @maxOccurs = 'unbounded'">
+			<xsl:text>]</xsl:text>
+		</xsl:if>
+		<xsl:if test="not($position = $last)">
 			<xsl:text>,</xsl:text>
 		</xsl:if>
 		<xsl:text> // </xsl:text>
