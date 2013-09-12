@@ -229,13 +229,16 @@
 		<xsl:variable name="elementName" select="@name"/>
 		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
 		
-		<xsl:if test="substring(@type, 1, 4) = 'xsd:'">
+		<xsl:if test="substring(@type, 1, 4) = 'xsd:' or type = 'impl:structured-data-nodes'">
 			<xsl:text>&#10;</xsl:text>
 			<xsl:value-of select="$depth"/>
 			<xsl:value-of select="@name"/>
 			<xsl:text>: </xsl:text>           
 		</xsl:if>
 		<xsl:choose>
+			<xsl:when test="@type = 'impl:structured-data-nodes'">
+				<xsl:text>impl:structured-data-nodes</xsl:text>
+			</xsl:when>
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
 				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
