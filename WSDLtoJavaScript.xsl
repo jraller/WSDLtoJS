@@ -15,10 +15,10 @@
 	
 	<xsl:output method="text"/>
 	
-	<xsl:variable name="indent" select="'  '"/>
+	<xsl:variable name="indent" select="'    '"/>
 	
 	<xsl:template match="/">
-		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/> <!-- [@name = 'read'] -->
+		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation[@name = 'move']"/> <!-- [@name = 'read'] -->
 	</xsl:template>
 	
 	<xsl:template match="wsdl:operation">
@@ -32,9 +32,11 @@
 		<xsl:apply-templates select="wsdl:input">
 			<xsl:with-param name="operationName" select="$operationName"/>
 		</xsl:apply-templates>
+		<!--
 		<xsl:apply-templates select="wsdl:output">
 			<xsl:with-param name="operationName" select="$operationName"/>
 		</xsl:apply-templates>
+		-->
 	</xsl:template>
 	
 	<xsl:template match="wsdl:input">
@@ -64,7 +66,7 @@
 		<xsl:text>&#10;var </xsl:text>
 		<xsl:value-of select="@name"/>
 		<xsl:text> = {</xsl:text>
-		<xsl:for-each select="schema:complexType/schema:sequence/schema:element">
+		<xsl:for-each select="schema:complexType/schema:sequence/schema:element|schema:complexType/schema:sequence/comment()">
 			<xsl:variable name="elementPartName" select="@name"/>
 			<xsl:variable name="elementPartType" select="@type"/>
 			<xsl:choose>
@@ -83,6 +85,9 @@
 						<xsl:with-param name="position" select="position()"/>
 						<xsl:with-param name="last" select="last()"/>
 					</xsl:apply-templates>
+				</xsl:when>
+				<xsl:when test="name(.) = ''">
+					<xsl:apply-templates select="."/>
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:text>&#10;I missed something</xsl:text>
@@ -184,7 +189,7 @@
 	
 	<xsl:template match="schema:sequence">
 		<xsl:param name="depth"/>
-		<xsl:for-each select="schema:element">
+		<xsl:for-each select="schema:element|comment()">
 			<xsl:apply-templates select=".">
 				<xsl:with-param name="depth" select="$depth"/>
 				<xsl:with-param name="position" select="position()"/>
@@ -315,6 +320,12 @@
 				<xsl:text>&#10;</xsl:text>
 			</xsl:otherwise>
 		</xsl:choose>
+	</xsl:template>
+	
+	<xsl:template match="comment()">
+		<xsl:text> /* </xsl:text>
+		<xsl:value-of select="normalize-space(.)"/>
+		<xsl:text> */</xsl:text>
 	</xsl:template>
 	
 	<xsl:template name="wrapAsString">
