@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-	xmlns:xd="http://www.oxygenxml.com/ns/doc/xsl" 
-	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
-	xmlns:impl="http://www.hannonhill.com/ws/ns/AssetOperationService"
-	xmlns:schema="http://www.w3.org/2001/XMLSchema"
-	exclude-result-prefixes="xd" version="1.0">
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xd="http://www.oxygenxml.com/ns/doc/xsl" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:impl="http://www.hannonhill.com/ws/ns/AssetOperationService" xmlns:schema="http://www.w3.org/2001/XMLSchema" exclude-result-prefixes="xd" version="1.0">
 	<xd:doc scope="stylesheet">
 		<xd:desc>
 			<xd:p><xd:b>Created on:</xd:b> Sep 11, 2013</xd:p>
@@ -12,15 +7,16 @@
 			<xd:p/>
 		</xd:desc>
 	</xd:doc>
-	
+
 	<xsl:output method="text"/>
-	
-	<xsl:variable name="indent" select="'  '"/>
-	
+
+	<xsl:variable name="indent" select="'    '"/>
+
 	<xsl:template match="/">
-		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/> <!-- [@name = 'read'] -->
+		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/>
+		<!-- [@name = 'read'] -->
 	</xsl:template>
-	
+
 	<xsl:template match="wsdl:operation">
 		<xsl:variable name="operationName" select="@name"/>
 		<xsl:if test="not(position() = 1)">
@@ -36,7 +32,7 @@
 			<xsl:with-param name="operationName" select="$operationName"/>
 		</xsl:apply-templates>
 	</xsl:template>
-	
+
 	<xsl:template match="wsdl:input">
 		<xsl:param name="operationName"/>
 		<xsl:variable name="inputName" select="@name"/>
@@ -45,7 +41,7 @@
 		<xsl:text> soapArgs */</xsl:text>
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:message[@name = $inputName]"/>
 	</xsl:template>
-	
+
 	<xsl:template match="wsdl:output">
 		<xsl:param name="operationName"/>
 		<xsl:variable name="outputName" select="@name"/>
@@ -54,12 +50,12 @@
 		<xsl:text> return */</xsl:text>
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:message[@name = $outputName]"/>
 	</xsl:template>
-	
+
 	<xsl:template match="wsdl:message">
 		<xsl:variable name="messageName" select="substring-after(wsdl:part/@element, ':')"/>
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:element[@name = $messageName]" mode="message"/>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:element" mode="message">
 		<xsl:text>&#10;var </xsl:text>
 		<xsl:value-of select="@name"/>
@@ -94,7 +90,7 @@
 		</xsl:for-each>
 		<xsl:text>};</xsl:text>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:simpleType">
 		<xsl:param name="depth"/>
 		<xsl:param name="name"/>
@@ -117,7 +113,7 @@
 			</xsl:if>
 		</xsl:for-each>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:complexType">
 		<xsl:param name="depth"/>
 		<xsl:param name="name"/>
@@ -127,14 +123,10 @@
 		<xsl:param name="maxOccurs"/>
 		<xsl:choose>
 			<xsl:when test="$impl = 'true'">
-				<xsl:apply-templates select="schema:sequence">
+				<xsl:apply-templates select="schema:sequence|schema:complexContent|schema:choice/schema:element">
 					<xsl:with-param name="depth" select="$depth"/>
-				</xsl:apply-templates>
-				<xsl:apply-templates select="schema:complexContent">
-					<xsl:with-param name="depth" select="$depth"/>
-				</xsl:apply-templates>
-				<xsl:apply-templates select="schema:choice">
-					<xsl:with-param name="depth" select="$depth"/>
+					<xsl:with-param name="position" select="position()"/>
+					<xsl:with-param name="last" select="last()"/>
 				</xsl:apply-templates>
 			</xsl:when>
 			<xsl:otherwise>
@@ -158,14 +150,10 @@
 					<xsl:text>[</xsl:text>
 				</xsl:if>
 				<xsl:text>{</xsl:text>
-				<xsl:apply-templates select="schema:sequence">
+				<xsl:apply-templates select="schema:sequence|schema:complexContent|schema:choice/schema:element">
 					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
-				</xsl:apply-templates>
-				<xsl:apply-templates select="schema:complexContent">
-					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
-				</xsl:apply-templates>
-				<xsl:apply-templates select="schema:choice">
-					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
+					<xsl:with-param name="position" select="position()"/>
+					<xsl:with-param name="last" select="last()"/>
 				</xsl:apply-templates>
 				<xsl:text>&#10;</xsl:text>
 				<xsl:value-of select="$depth"/>
@@ -184,17 +172,17 @@
 			</xsl:otherwise>
 		</xsl:choose>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:complexContent">
 		<xsl:param name="depth"/>
 		<xsl:apply-templates select="schema:extension">
 			<xsl:with-param name="depth" select="$depth"/>
 		</xsl:apply-templates>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:extension">
 		<xsl:param name="depth"/>
-		<xsl:variable name="base" select="substring-after(@base, 'impl:')" />
+		<xsl:variable name="base" select="substring-after(@base, 'impl:')"/>
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $base]">
 			<xsl:with-param name="depth" select="$depth"/>
 			<xsl:with-param name="impl" select="'true'"/>
@@ -204,7 +192,7 @@
 			<xsl:with-param name="impl" select="'true'"/>
 		</xsl:apply-templates>
 	</xsl:template>
-	
+
 	<xsl:template match="schema:sequence">
 		<xsl:param name="depth"/>
 		<xsl:param name="impl"/>
@@ -217,18 +205,7 @@
 			</xsl:apply-templates>
 		</xsl:for-each>
 	</xsl:template>
-	
-	<xsl:template match="schema:choice">
-		<xsl:param name="depth"/>		
-		<xsl:for-each select="schema:element">
-			<xsl:apply-templates select=".">
-				<xsl:with-param name="depth" select="$depth"/>
-				<xsl:with-param name="position" select="position()"/>
-				<xsl:with-param name="last" select="last()"/>
-			</xsl:apply-templates>
-		</xsl:for-each>
-	</xsl:template>
-	
+
 	<xsl:template match="schema:element">
 		<xsl:param name="depth"/>
 		<xsl:param name="position"/>
@@ -236,14 +213,14 @@
 		<xsl:param name="impl"/>
 		<xsl:variable name="elementName" select="@name"/>
 		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
-		
+
 		<xsl:if test="substring(@type, 1, 4) = 'xsd:' or @type = 'impl:structured-data-nodes'">
 			<xsl:text>&#10;</xsl:text>
 			<xsl:value-of select="$depth"/>
 			<xsl:call-template name="wrapAsString">
 				<xsl:with-param name="name" select="@name"/>
 			</xsl:call-template>
-			<xsl:text>: </xsl:text>           
+			<xsl:text>: </xsl:text>
 		</xsl:if>
 		<xsl:choose>
 			<xsl:when test="@type = 'impl:structured-data-nodes'">
@@ -294,8 +271,7 @@
 		<xsl:if test="substring(@type, 1, 5) = 'impl:' and @maxOccurs = 'unbounded'">
 			<xsl:text>]</xsl:text>
 		</xsl:if>
-		
-		
+
 		<xsl:if test="not($position = $last)
 			or $impl = 'true'
 			or ../../@name = 'base-asset'
@@ -303,9 +279,22 @@
 			<xsl:text>,</xsl:text>
 		</xsl:if>
 		<!-- and count(/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]) = 0) -->
-		
-
-		
+		<!--
+		<xsl:choose>
+			<xsl:when test="not($position = $last)">
+				<xsl:text>/* not last */</xsl:text>
+			</xsl:when>
+			<xsl:when test="$impl = 'true'">
+				<xsl:text>/* impl */</xsl:text>
+			</xsl:when>
+			<xsl:when test="../../@name = 'base-asset'">
+				<xsl:text>/* base asset */</xsl:text>
+			</xsl:when>
+			<xsl:when test="../../@name = 'operationResult'">">
+				<xsl:text>/* operationResult */</xsl:text>
+			</xsl:when>
+		</xsl:choose>
+		-->
 		<xsl:text> // </xsl:text>
 		<xsl:value-of select="@type"/>
 		<xsl:if test="@nillable = 'true'">
@@ -319,7 +308,7 @@
 			<xsl:when test="@maxOccurs = 'unbounded'">
 				<xsl:text> unbounded</xsl:text>
 			</xsl:when>
-			<xsl:when test="string-length(@maxOccurs) = 0"/>			
+			<xsl:when test="string-length(@maxOccurs) = 0"/>
 			<xsl:otherwise>
 				<xsl:text> occurs </xsl:text>
 				<xsl:value-of select="@maxOccurs"/>
@@ -335,15 +324,13 @@
 			</xsl:otherwise>
 		</xsl:choose>
 	</xsl:template>
-	
+
 	<xsl:template match="comment()">
-		<!--
 		<xsl:text> /* </xsl:text>
 		<xsl:value-of select="normalize-space(.)"/>
 		<xsl:text> */</xsl:text>
-		-->
 	</xsl:template>
-	
+
 	<xsl:template name="wrapAsString">
 		<xsl:param name="name"/>
 		<xsl:choose>
@@ -355,12 +342,12 @@
 			<xsl:when test="$name = 'delete'">
 				<xsl:text>'</xsl:text>
 				<xsl:value-of select="$name"/>
-				<xsl:text>'</xsl:text>				
+				<xsl:text>'</xsl:text>
 			</xsl:when>
 			<xsl:otherwise>
 				<xsl:value-of select="$name"/>
 			</xsl:otherwise>
 		</xsl:choose>
 	</xsl:template>
-	
+
 </xsl:stylesheet>
