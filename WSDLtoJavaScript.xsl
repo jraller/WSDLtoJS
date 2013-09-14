@@ -15,7 +15,7 @@
 
   <!-- The main rule -->
 	<xsl:template match="/">
-		<xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation"/>
+	    <xsl:apply-templates select="/wsdl:definitions/wsdl:binding/wsdl:operation[not(@name = 'read' or @name = 'create' or @name = 'edit' or @name = 'batch')]"/>
 		<!-- appending this will process only a single call, replace read with call name [@name = 'read'] -->
 	</xsl:template>
 
@@ -45,7 +45,7 @@
 		<xsl:text> soapArgs */</xsl:text>
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:message[@name = $inputName]"/>
 	</xsl:template>
-	
+
 	<!-- process the return of the call -->
 	<xsl:template match="wsdl:output">
 		<xsl:param name="operationName"/>
@@ -104,30 +104,6 @@
 		<xsl:text>};</xsl:text>
 	</xsl:template>
 
-	<!-- simpleTypes are generally strings with a predetermined set of valid values -->
-	<xsl:template match="schema:simpleType">
-		<xsl:param name="depth"/>
-		<xsl:param name="name"/>
-		<xsl:param name="position"/>
-		<xsl:param name="last"/>
-		<xsl:text>&#10;</xsl:text>
-		<xsl:value-of select="$depth"/>
-		<xsl:value-of select="$name"/>
-		<xsl:text>: ''</xsl:text>
-		<xsl:if test="not($position = $last)">
-			<xsl:text>,</xsl:text>
-		</xsl:if>
-		<xsl:text> // one of: </xsl:text>
-		<xsl:for-each select="schema:restriction/schema:enumeration">
-			<xsl:text>'</xsl:text>
-			<xsl:value-of select="@value"/>
-			<xsl:text>'</xsl:text>
-			<xsl:if test="not(position() = last())">
-				<xsl:text>, </xsl:text>
-			</xsl:if>
-		</xsl:for-each>
-	</xsl:template>
-
 	<!-- complexType -->
 	<xsl:template match="schema:complexType">
 		<xsl:param name="depth"/>
@@ -136,19 +112,21 @@
 		<xsl:param name="last"/>
 		<xsl:param name="impl"/>
 		<xsl:param name="maxOccurs"/>
-			
+		<xsl:param name="more"/>
+
 		<xsl:text> /* </xsl:text>
 		<xsl:value-of select="$position"/>
 		<xsl:text>:</xsl:text>
 		<xsl:value-of select="$last"/>
 		<xsl:text> */</xsl:text>
-		
+
 		<xsl:choose>
 			<xsl:when test="$impl = 'true'">
 				<xsl:apply-templates select="schema:sequence|schema:complexContent/schema:extension|schema:choice/schema:element">
 					<xsl:with-param name="depth" select="$depth"/>
-					<xsl:with-param name="position" select="$position + position()"/>
-					<xsl:with-param name="last" select="$last + last()"/>
+					<xsl:with-param name="position" select="position()"/>
+				    <xsl:with-param name="last" select="last()"/>
+					<xsl:with-param name="more" select="$more"/>
 				</xsl:apply-templates>
 			</xsl:when>
 			<xsl:otherwise>
@@ -176,11 +154,15 @@
 					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
 					<xsl:with-param name="position" select="$position + position()"/>
 					<xsl:with-param name="last" select="$last + last()"/>
+					<xsl:with-param name="more" select="$more"/>
 				</xsl:apply-templates>
 				<xsl:text>&#10;</xsl:text>
 				<xsl:value-of select="$depth"/>
 				<xsl:text>}</xsl:text>
 				<xsl:choose>
+				    <xsl:when test="$maxOccurs = 'unbounded'">
+				        <xsl:text/>
+				    </xsl:when>
 					<xsl:when test="not($position = $last)">
 						<xsl:text>,</xsl:text>
 					</xsl:when>
@@ -200,28 +182,41 @@
 		<xsl:param name="position"/>
 		<xsl:param name="last"/>
 		<xsl:variable name="base" select="substring-after(@base, 'impl:')"/>
-		
+	    <xsl:variable name="complexTypes" select="count(/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $base])"/>
+	    <xsl:variable name="sequences" select="count(schema:sequence)"/>
+	    
 		<xsl:text>//</xsl:text>
-		<xsl:value-of select="count(schema:sequence/schema:element|schema:sequence/schema:choice|schema:sequence/comment())"/>
-		<xsl:text>]]</xsl:text>
+		<xsl:value-of select="count(schema:sequence/schema:element)"/>
+	    <xsl:text>:</xsl:text>
+	    <xsl:value-of select="count(schema:sequence/schema:choice)"/>
+	    <xsl:text>:</xsl:text>
+	    <xsl:value-of select="count(schema:sequence/comment())"/>
+	    <xsl:text>:</xsl:text>
+	    <xsl:value-of select="$complexTypes"/>
+	    <xsl:text>:</xsl:text>
+	    <xsl:value-of select="$sequences"/>
+	    <xsl:text>]]</xsl:text>
 
-		<xsl:variable name="complexTypes" select="count(/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $base])"/>
-		<xsl:variable name="sequences" select="count(schema:sequence)"/>
 
 		<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $base]">
 			<xsl:with-param name="depth" select="$depth"/>
 			<xsl:with-param name="impl" select="'true'"/>
 			<xsl:with-param name="position" select="$position + position()"/>
-			<xsl:with-param name="last" select="$sequences + $last + last()"/>
+			<xsl:with-param name="last" select="$last + last()"/>
+			<xsl:with-param name="more" select="$sequences"/>
+		    <!--
+		    <xsl:with-param name="seqPosition" select="position()"/>
+		    <xsl:with-param name="seqLast" select="last() + $sequences + 1000"/>
+		    -->
 		</xsl:apply-templates>
-		
+
 		<xsl:apply-templates select="schema:sequence">
 			<xsl:with-param name="depth" select="$depth"/>
 			<xsl:with-param name="impl" select="'true'"/>
-			<xsl:with-param name="position" select="$complexTypes + $position + position()"/>
-			<xsl:with-param name="last" select="$complexTypes + $last + last()"/>
+			<xsl:with-param name="position" select="$position + position()"/>
+			<xsl:with-param name="last" select="$last + last()"/>
 		</xsl:apply-templates>
-		
+
 	</xsl:template>
 
 	<xsl:template match="schema:sequence">
@@ -229,25 +224,65 @@
 		<xsl:param name="position"/>
 		<xsl:param name="last"/>
 		<xsl:param name="impl"/>
-		
-		<xsl:text> /* </xsl:text>
+		<xsl:param name="more" select="0"/>
+
+		<xsl:variable name="moreCount">
+			<xsl:choose>
+				<xsl:when test="string-length($more) &gt; 0">
+					<xsl:value-of select="number(1)"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="number(0)"/>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:variable>
+
+		<xsl:text> /* seq: </xsl:text>
 		<xsl:value-of select="$position"/>
 		<xsl:text>:</xsl:text>
 		<xsl:value-of select="$last"/>
+		<xsl:text>:</xsl:text>
+		<xsl:value-of select="$moreCount"/>
 		<xsl:text> */</xsl:text>
-		
+
 		<xsl:for-each select="schema:element|schema:choice/schema:element|comment()">
 			<xsl:apply-templates select=".">
 				<xsl:with-param name="depth" select="$depth"/>
 				<xsl:with-param name="position" select="$position + position()"/>
-				<xsl:with-param name="last" select="$last + last()"/>
+				<xsl:with-param name="last" select="$last + last() + $moreCount"/>
 				<xsl:with-param name="seqPosition" select="position()"/>
-				<xsl:with-param name="seqLast" select="last()"/>
+				<xsl:with-param name="seqLast" select="last() + $moreCount"/>
 				<xsl:with-param name="impl" select="$impl"/>
 			</xsl:apply-templates>
 		</xsl:for-each>
 	</xsl:template>
-
+    
+    <!-- simpleTypes are generally strings with a predetermined set of valid values -->
+    <xsl:template match="schema:simpleType">
+        <xsl:param name="depth"/>
+        <xsl:param name="name"/>
+        <xsl:param name="position"/>
+        <xsl:param name="last"/>
+        <xsl:param name="seqPosition"/>
+        <xsl:param name="seqLast"/>
+        <xsl:text>&#10;</xsl:text>
+        <xsl:value-of select="$depth"/>
+        <xsl:value-of select="$name"/>
+        <xsl:text>: ''</xsl:text>
+        <xsl:if test="not($position = $last or $seqPosition = $seqLast)">
+            <xsl:text>,</xsl:text>
+        </xsl:if>
+        <xsl:text> // one of: </xsl:text>
+        <xsl:for-each select="schema:restriction/schema:enumeration">
+            <xsl:text>'</xsl:text>
+            <xsl:value-of select="@value"/>
+            <xsl:text>'</xsl:text>
+            <xsl:if test="not(position() = last())">
+                <xsl:text>, </xsl:text>
+            </xsl:if>
+        </xsl:for-each>
+    </xsl:template>
+    
 	<xsl:template match="schema:element">
 		<xsl:param name="depth"/>
 		<xsl:param name="position"/>
@@ -270,6 +305,7 @@
 				<xsl:text>{structuredData: 'down the rabbit hole'}</xsl:text>
 			</xsl:when>
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
+			    <!--
 				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
 					<xsl:with-param name="name" select="$elementName"/>
@@ -277,12 +313,15 @@
 					<xsl:with-param name="position" select="$position + position()"/>
 					<xsl:with-param name="last" select="$last + last()"/>
 				</xsl:apply-templates>
-				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
+			    -->
+			    <xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]|/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
 					<xsl:with-param name="depth" select="$depth"/>
 					<xsl:with-param name="name" select="$elementName"/>
 					<xsl:with-param name="maxOccurs" select="@maxOccurs"/>
 					<xsl:with-param name="position" select="$position + position()"/>
 					<xsl:with-param name="last" select="$last + last()"/>
+				    <xsl:with-param name="seqPosition" select="$seqPosition"/>
+				    <xsl:with-param name="seqLast" select="$seqLast"/>
 				</xsl:apply-templates>
 			</xsl:when>
 			<xsl:when test="@type = 'xsd:anyURI'">
@@ -352,8 +391,8 @@
 		<xsl:value-of select="$seqPosition"/>
 		<xsl:text>:</xsl:text>
 		<xsl:value-of select="$seqLast"/>
-		
-		
+
+
 		<xsl:text> */</xsl:text>
 
 
