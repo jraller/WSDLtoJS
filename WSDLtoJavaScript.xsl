@@ -65,13 +65,15 @@
 	<!-- schema element in message mode, see below for child element processing -->
 	<xsl:template match="schema:element" mode="message">
 		<xsl:text>&#10;var </xsl:text>
-		<xsl:value-of select="@name"/>
+		<xsl:call-template name="wrapAsString">
+			<xsl:with-param name="name" select="concat(@name, 'SoapArgs')"/>
+		</xsl:call-template>
 		<xsl:text> = {</xsl:text>
-		<xsl:for-each select="schema:complexType/schema:sequence/schema:element|schema:complexType/schema:sequence/comment()">
+		<xsl:for-each select="schema:complexType/schema:sequence/schema:element"> <!-- |schema:complexType/schema:sequence/comment() -->
 			<xsl:variable name="elementPartName" select="@name"/>
 			<xsl:variable name="elementPartType" select="@type"/>
 			<xsl:variable name="position" select="position()"/>
-			<xsl:variable name="last" select="position()"/>
+			<xsl:variable name="last" select="last()"/>
 			<xsl:choose>
 				<xsl:when test="substring-before($elementPartType, ':') = 'impl'">
 					<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = substring-after($elementPartType, 'impl:')]">
@@ -134,6 +136,13 @@
 		<xsl:param name="last"/>
 		<xsl:param name="impl"/>
 		<xsl:param name="maxOccurs"/>
+			
+		<xsl:text> /* </xsl:text>
+		<xsl:value-of select="$position"/>
+		<xsl:text>:</xsl:text>
+		<xsl:value-of select="$last"/>
+		<xsl:text> */</xsl:text>
+		
 		<xsl:choose>
 			<xsl:when test="$impl = 'true'">
 				<xsl:apply-templates select="schema:sequence|schema:complexContent/schema:extension|schema:choice/schema:element">
@@ -220,12 +229,20 @@
 		<xsl:param name="position"/>
 		<xsl:param name="last"/>
 		<xsl:param name="impl"/>
-		<xsl:param name="extensionDepth"/>
+		
+		<xsl:text> /* </xsl:text>
+		<xsl:value-of select="$position"/>
+		<xsl:text>:</xsl:text>
+		<xsl:value-of select="$last"/>
+		<xsl:text> */</xsl:text>
+		
 		<xsl:for-each select="schema:element|schema:choice/schema:element|comment()">
 			<xsl:apply-templates select=".">
 				<xsl:with-param name="depth" select="$depth"/>
 				<xsl:with-param name="position" select="$position + position()"/>
 				<xsl:with-param name="last" select="$last + last()"/>
+				<xsl:with-param name="seqPosition" select="position()"/>
+				<xsl:with-param name="seqLast" select="last()"/>
 				<xsl:with-param name="impl" select="$impl"/>
 			</xsl:apply-templates>
 		</xsl:for-each>
@@ -235,8 +252,9 @@
 		<xsl:param name="depth"/>
 		<xsl:param name="position"/>
 		<xsl:param name="last"/>
+		<xsl:param name="seqPosition"/>
+		<xsl:param name="seqLast"/>
 		<xsl:param name="impl"/>
-		<xsl:param name="extensionDepth"/>
 		<xsl:variable name="elementName" select="@name"/>
 		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
 		<xsl:if test="substring(@type, 1, 4) = 'xsd:' or @type = 'impl:structured-data-nodes'">
@@ -305,7 +323,7 @@
 				<xsl:text/>
 			</xsl:when>
 			<xsl:otherwise>
-				<xsl:if test="not($position = $last)">
+				<xsl:if test="not($position = $last or $seqPosition = $seqLast)">
 					<!--
 						or ($impl = 'true' and not(../../@base = 'impl:block'))
 						or ../../@name = 'base-asset'
@@ -329,6 +347,13 @@
 		<xsl:value-of select="$position"/>
 		<xsl:text>:</xsl:text>
 		<xsl:value-of select="$last"/>
+
+		<xsl:text>-</xsl:text>		
+		<xsl:value-of select="$seqPosition"/>
+		<xsl:text>:</xsl:text>
+		<xsl:value-of select="$seqLast"/>
+		
+		
 		<xsl:text> */</xsl:text>
 
 
