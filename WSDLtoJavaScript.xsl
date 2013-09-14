@@ -22,8 +22,8 @@
 
 	<xsl:variable name="operations">
 		<operations>
-			<xsl:for-each
-				select="/wsdl:definitions/wsdl:binding/wsdl:operation[not(@name = 'read' or @name = 'create' or @name = 'edit' or @name = 'batch')]">
+			<xsl:for-each select="/wsdl:definitions/wsdl:binding/wsdl:operation">
+				<!-- [not(@name = 'read' or @name = 'create' or @name = 'edit' or @name = 'batch')] -->
 				<xsl:apply-templates select="."/>
 			</xsl:for-each>
 		</operations>
@@ -159,7 +159,9 @@
 		<xsl:variable name="elementType" select="substring-after(@type, 'impl:')"/>
 		<xsl:choose>
 			<xsl:when test="@type = 'impl:structured-data-nodes'">
-				<xsl:copy-of select="."/>
+				<element>
+					<xsl:copy-of select="@*"/>
+				</element>
 			</xsl:when>
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
 			    <!--
@@ -188,18 +190,21 @@
 	<!-- The main rule -->
 	<xsl:template match="/">
 		<xsl:apply-templates select="exsl:node-set($operations)/operations" mode="js"/>
+<!--		<xsl:copy-of select="exsl:node-set($operations)/operations"/>-->
 	</xsl:template>
-	
+
 	<xsl:template match="operation" mode="js">
 		<xsl:text>/* </xsl:text>
 		<xsl:value-of select="@name"/>
 		<xsl:text> */&#10;</xsl:text>
 		<xsl:apply-templates mode="js"/>
 	</xsl:template>
-	
+
 	<xsl:template match="soapArgs" mode="js">
 		<xsl:text>var soapArgsFor</xsl:text>
-		<xsl:value-of select="../@name"/>
+		<xsl:call-template name="wrapAsString">
+			<xsl:with-param name="name" select="../@name"/>
+		</xsl:call-template>
 		<xsl:text> = {&#10;</xsl:text>
 		<xsl:apply-templates mode="js">
 			<xsl:with-param name="depth" select="$indent"/>
@@ -209,7 +214,9 @@
 
 	<xsl:template match="response" mode="js">
 		<xsl:text>var responseFor</xsl:text>
-		<xsl:value-of select="../@name"/>
+		<xsl:call-template name="wrapAsString">
+			<xsl:with-param name="name" select="../@name"/>
+		</xsl:call-template>
 		<xsl:text> = {&#10;</xsl:text>
 		<xsl:apply-templates mode="js">
 			<xsl:with-param name="depth" select="$indent"/>
@@ -219,27 +226,49 @@
 
 	<xsl:template match="complex" mode="js">
 		<xsl:param name="depth"/>
-		<xsl:value-of select="$depth"/>
-		<xsl:value-of select="@name"/>
-		<xsl:text>: {&#10;</xsl:text>
-		<xsl:apply-templates mode="js">
-			<xsl:with-param name="depth" select="concat($depth, $indent)"/>
-		</xsl:apply-templates>
-		<xsl:value-of select="$depth"/>
-		<xsl:text>}</xsl:text>
-		<xsl:if test="not(position() = last())">
-			<xsl:text>,</xsl:text>
-		</xsl:if>
-		<xsl:if test="position() = last() and not($depth)">
-			<xsl:text>;</xsl:text>
-		</xsl:if>
-		<xsl:text>&#10;</xsl:text>
+		<xsl:param name="more"/>
+		<xsl:choose>
+			<xsl:when test="string-length(@name) &gt; 0">
+				<xsl:value-of select="$depth"/>
+				<xsl:call-template name="wrapAsString">
+					<xsl:with-param name="name" select="@name"/>
+				</xsl:call-template>
+				<xsl:text>: {&#10;</xsl:text>
+				<xsl:apply-templates mode="js">
+					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
+				</xsl:apply-templates>
+				<xsl:value-of select="$depth"/>
+				<xsl:text>}</xsl:text>
+				<xsl:if test="not(position() = last()) or $more">
+					<xsl:text>,</xsl:text>
+				</xsl:if>
+				<xsl:if test="position() = last() and not($depth)">
+					<xsl:text>;</xsl:text>
+				</xsl:if>
+				
+				<xsl:text>//</xsl:text>
+				<xsl:value-of select="position()"/>
+				<xsl:text>:</xsl:text>
+				<xsl:value-of select="last()"/>
+				
+				<xsl:text>&#10;</xsl:text>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:apply-templates mode="js">
+					<xsl:with-param name="depth" select="$depth"/>
+					<xsl:with-param name="more" select="'flag'"/>
+				</xsl:apply-templates>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:template>
 
 	<xsl:template match="element" mode="js">
 		<xsl:param name="depth"/>
+		<xsl:param name="more"/>
 		<xsl:value-of select="$depth"/>
-		<xsl:value-of select="@name"/>
+		<xsl:call-template name="wrapAsString">
+			<xsl:with-param name="name" select="@name"/>
+		</xsl:call-template>
 		<xsl:text>: </xsl:text>
 		<xsl:choose>
 			<xsl:when test="@list">
@@ -269,18 +298,29 @@
 			<xsl:when test="@type = 'xsd:time'">
 				<xsl:text>new Date()</xsl:text>
 			</xsl:when>
+			<xsl:when test="@type = 'impl:structured-data-nodes'">
+				<xsl:text>{}</xsl:text>
+			</xsl:when>
 			<xsl:otherwise>
 				<xsl:text>You forgot one</xsl:text>
 			</xsl:otherwise>
 		</xsl:choose>
 
 
-		<xsl:if test="not(position() = last())">
+		<xsl:if test="not(position() = last()) or $more">
 			<xsl:text>,</xsl:text>
 		</xsl:if>
-		
-		
+
+
 		<xsl:text>  // </xsl:text>
+		
+		<xsl:text>p:</xsl:text>
+		<xsl:value-of select="position()"/>
+		<xsl:text>:</xsl:text>
+		<xsl:value-of select="last()"/>
+		<xsl:text> more:</xsl:text>
+		<xsl:value-of select="$more"/>
+		
 		<xsl:if test="@list">
 			<xsl:text> one of: </xsl:text>
 			<xsl:value-of select="@list"/>
@@ -311,7 +351,7 @@
 				<xsl:value-of select="$name"/>
 				<xsl:text>'</xsl:text>
 			</xsl:when>
-			<xsl:when test="$name = 'delete'">
+			<xsl:when test="$name = 'delete' or $name = 'value'">
 				<xsl:text>'</xsl:text>
 				<xsl:value-of select="$name"/>
 				<xsl:text>'</xsl:text>
