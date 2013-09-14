@@ -12,5 +12,6 @@ I will use this to improve the [Grunt Cascade Examples Wiki](https://github.com/
 
 # To Do
 
-Fix the comma issue
-Pull comments from in the WSDL context if possible and turn them into js comments.
+- [ ] Fix the comma issue
+- [x] Pull comments from in the WSDL context if possible and turn them into js comments.
+
