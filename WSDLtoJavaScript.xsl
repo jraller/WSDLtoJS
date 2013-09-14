@@ -183,18 +183,121 @@
 				<xsl:text>You forgot one</xsl:text>
 			</xsl:otherwise>
 		</xsl:choose>
-		<xsl:if test="substring(@type, 1, 5) = 'impl:' and @maxOccurs = 'unbounded'">
-			<xsl:text>]</xsl:text>
-		</xsl:if>
-
-
 	</xsl:template>
 
 	<!-- The main rule -->
 	<xsl:template match="/">
-		<xsl:copy-of select="exsl:node-set($operations)"/>
+		<xsl:apply-templates select="exsl:node-set($operations)/operations" mode="js"/>
 	</xsl:template>
 	
+	<xsl:template match="operation" mode="js">
+		<xsl:text>/* </xsl:text>
+		<xsl:value-of select="@name"/>
+		<xsl:text> */&#10;</xsl:text>
+		<xsl:apply-templates mode="js"/>
+	</xsl:template>
+	
+	<xsl:template match="soapArgs" mode="js">
+		<xsl:text>var soapArgsFor</xsl:text>
+		<xsl:value-of select="../@name"/>
+		<xsl:text> = {&#10;</xsl:text>
+		<xsl:apply-templates mode="js">
+			<xsl:with-param name="depth" select="$indent"/>
+		</xsl:apply-templates>
+		<xsl:text>};&#10;</xsl:text>
+	</xsl:template>
+
+	<xsl:template match="response" mode="js">
+		<xsl:text>var responseFor</xsl:text>
+		<xsl:value-of select="../@name"/>
+		<xsl:text> = {&#10;</xsl:text>
+		<xsl:apply-templates mode="js">
+			<xsl:with-param name="depth" select="$indent"/>
+		</xsl:apply-templates>
+		<xsl:text>};&#10;</xsl:text>
+	</xsl:template>
+
+	<xsl:template match="complex" mode="js">
+		<xsl:param name="depth"/>
+		<xsl:value-of select="$depth"/>
+		<xsl:value-of select="@name"/>
+		<xsl:text>: {&#10;</xsl:text>
+		<xsl:apply-templates mode="js">
+			<xsl:with-param name="depth" select="concat($depth, $indent)"/>
+		</xsl:apply-templates>
+		<xsl:value-of select="$depth"/>
+		<xsl:text>}</xsl:text>
+		<xsl:if test="not(position() = last())">
+			<xsl:text>,</xsl:text>
+		</xsl:if>
+		<xsl:if test="position() = last() and not($depth)">
+			<xsl:text>;</xsl:text>
+		</xsl:if>
+		<xsl:text>&#10;</xsl:text>
+	</xsl:template>
+
+	<xsl:template match="element" mode="js">
+		<xsl:param name="depth"/>
+		<xsl:value-of select="$depth"/>
+		<xsl:value-of select="@name"/>
+		<xsl:text>: </xsl:text>
+		<xsl:choose>
+			<xsl:when test="@list">
+				<xsl:text>''</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:anyURI'">
+				<xsl:text>'http://hannonhill.com'</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:base64Binary'">
+				<xsl:text>'base64 encoded content'</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:boolean'">
+				<xsl:text>'false'</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:dateTime'">
+				<xsl:text>new Date()</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:nonNegativeInteger'">
+				<xsl:text>2</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:positiveInteger'">
+				<xsl:text>42</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:string'">
+				<xsl:text>''</xsl:text>
+			</xsl:when>
+			<xsl:when test="@type = 'xsd:time'">
+				<xsl:text>new Date()</xsl:text>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:text>You forgot one</xsl:text>
+			</xsl:otherwise>
+		</xsl:choose>
+
+
+		<xsl:if test="not(position() = last())">
+			<xsl:text>,</xsl:text>
+		</xsl:if>
+		
+		
+		<xsl:text>  // </xsl:text>
+		<xsl:if test="@list">
+			<xsl:text> one of: </xsl:text>
+			<xsl:value-of select="@list"/>
+			<xsl:text> </xsl:text>
+		</xsl:if>
+		<xsl:value-of select="@type"/>
+		<xsl:text>&#10;</xsl:text>
+	</xsl:template>
+
+	<xsl:template match="comment()" mode="js">
+		<xsl:param name="depth"/>
+		<xsl:value-of select="$depth"/>
+		<xsl:text>/* </xsl:text>
+		<xsl:value-of select="."/>
+		<xsl:text>*/</xsl:text>
+		<xsl:text>&#10;</xsl:text>
+	</xsl:template>
 
 	<xsl:template match="comment()">
 		<xsl:comment><xsl:value-of select="normalize-space(.)"/></xsl:comment>
