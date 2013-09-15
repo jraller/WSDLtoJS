@@ -266,12 +266,6 @@
 				<xsl:if test="position() = last() and not($depth)">
 					<xsl:text>;</xsl:text>
 				</xsl:if>
-				
-				<xsl:text>//</xsl:text>
-				<xsl:value-of select="position()"/>
-				<xsl:text>:</xsl:text>
-				<xsl:value-of select="last()"/>
-				
 				<xsl:text>&#10;</xsl:text>
 			</xsl:when>
 			<xsl:otherwise>
@@ -327,20 +321,11 @@
 			</xsl:otherwise>
 		</xsl:choose>
 
-
 		<xsl:if test="not(position() = last()) or $more">
 			<xsl:text>,</xsl:text>
 		</xsl:if>
 
-
 		<xsl:text>  // </xsl:text>
-		
-		<xsl:text>p:</xsl:text>
-		<xsl:value-of select="position()"/>
-		<xsl:text>:</xsl:text>
-		<xsl:value-of select="last()"/>
-		<xsl:text> more:</xsl:text>
-		<xsl:value-of select="$more"/>
 		
 		<xsl:if test="@list">
 			<xsl:text> one of: </xsl:text>
