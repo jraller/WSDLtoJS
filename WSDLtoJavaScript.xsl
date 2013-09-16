@@ -371,7 +371,7 @@
 		<xsl:value-of select="$depth"/>
 		<xsl:text>/* </xsl:text>
 		<xsl:value-of select="."/>
-		<xsl:text>*/</xsl:text>
+		<xsl:text> */</xsl:text>
 		<xsl:text>&#10;</xsl:text>
 	</xsl:template>
 
