@@ -18,7 +18,7 @@
 	<xsl:output method="html"/>
 
 	<!-- set the characters for indent. 4 spaces for JSLint, 2 spaces for github -->
-	<xsl:variable name="indent" select="'    '"/>
+	<xsl:variable name="indent" select="'  '"/>
 
 	<xsl:variable name="operations">
 		<operations>
@@ -97,6 +97,9 @@
 				<complex>
 					<xsl:attribute name="name">
 						<xsl:value-of select="$name"/>
+					</xsl:attribute>
+					<xsl:attribute name="maxOccurs">
+						<xsl:value-of select="$maxOccurs"/>
 					</xsl:attribute>
 					<xsl:choose>
 						<xsl:when test="$impl = 'true'">
@@ -254,12 +257,19 @@
 				<xsl:call-template name="wrapAsString">
 					<xsl:with-param name="name" select="@name"/>
 				</xsl:call-template>
-				<xsl:text>: {&#10;</xsl:text>
+				<xsl:text>: </xsl:text>
+				<xsl:if test="@maxOccurs = 'unbounded'">
+					<xsl:text>[</xsl:text>
+				</xsl:if>
+				<xsl:text>{&#10;</xsl:text>
 				<xsl:apply-templates mode="js">
 					<xsl:with-param name="depth" select="concat($depth, $indent)"/>
 				</xsl:apply-templates>
 				<xsl:value-of select="$depth"/>
 				<xsl:text>}</xsl:text>
+				<xsl:if test="@maxOccurs = 'unbounded'">
+					<xsl:text>]</xsl:text>
+				</xsl:if>
 				<xsl:if test="not(position() = last()) or $more">
 					<xsl:text>,</xsl:text>
 				</xsl:if>
@@ -285,6 +295,7 @@
 			<xsl:with-param name="name" select="@name"/>
 		</xsl:call-template>
 		<xsl:text>: </xsl:text>
+
 		<xsl:choose>
 			<xsl:when test="@list">
 				<xsl:text>''</xsl:text>
@@ -332,7 +343,26 @@
 			<xsl:value-of select="@list"/>
 			<xsl:text> </xsl:text>
 		</xsl:if>
-		<xsl:value-of select="@type"/>
+		<xsl:value-of select="@type"/>		
+		<xsl:if test="@nillable = 'true'">
+			<xsl:text> nillable</xsl:text>
+		</xsl:if>
+		<xsl:if test="@minOccurs > 0">
+			<xsl:text> required</xsl:text>
+		</xsl:if>
+		<xsl:choose>
+			<xsl:when test="@maxOccurs = 1"/>
+			<xsl:when test="@maxOccurs = 'unbounded'">
+				<xsl:text> unbounded</xsl:text>
+			</xsl:when>
+			<xsl:when test="string-length(@maxOccurs) = 0"/>
+			<xsl:otherwise>
+				<xsl:text> occurs </xsl:text>
+				<xsl:value-of select="@maxOccurs"/>
+				<xsl:text> times</xsl:text>
+			</xsl:otherwise>
+		</xsl:choose>
+		
 		<xsl:text>&#10;</xsl:text>
 	</xsl:template>
 
