@@ -67,7 +67,7 @@
 			<xsl:variable name="elementPartType" select="@type"/>
 			<xsl:choose>
 				<xsl:when test="substring-before($elementPartType, ':') = 'impl'">
-					<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = substring-after($elementPartType, 'impl:')]">
+					<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = substring-after($elementPartType, 'impl:')]|/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = substring-after($elementPartType, 'impl:')]">
 						<xsl:with-param name="name" select="$elementPartName"/>
 					</xsl:apply-templates>
 				</xsl:when>
@@ -188,14 +188,7 @@
 				</element>
 			</xsl:when>
 			<xsl:when test="substring(@type, 1, 5) = 'impl:'">
-			    <!--
-				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]">
-					<xsl:with-param name="depth" select="$depth"/>
-					<xsl:with-param name="name" select="$elementName"/>
-					<xsl:with-param name="maxOccurs" select="@maxOccurs"/>
-				</xsl:apply-templates>
-			    -->
-			    <xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]|/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
+				<xsl:apply-templates select="/wsdl:definitions/wsdl:types/schema:schema/schema:complexType[@name = $elementType]|/wsdl:definitions/wsdl:types/schema:schema/schema:simpleType[@name = $elementType]">
 					<xsl:with-param name="name" select="$elementName"/>
 					<xsl:with-param name="maxOccurs" select="@maxOccurs"/>
 				</xsl:apply-templates>
